@@ -1,3 +1,20 @@
 spring:
   application:
     name: "MLB Data"
+
+  kafka:
+    bootstrap-servers: localhost:9094
+    consumer:
+      group-id: myGroup
+      auto-offset-reset: earliest
+
+  cassandra:
+    contact-points: localhost
+    keyspace-name: demo
+    local-datacenter: datacenter1
+    port: 9042
+    schema-action: CREATE_IF_NOT_EXISTS
+
+
+application:
+  pitch-event-topic: "pitches"

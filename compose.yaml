@@ -49,7 +49,7 @@ services:
     hostname: flink-jobmanager
     container_name: flink-jobmanager
     ports:
-      - "8081:8081" # Expose Flink Web UI port
+      - "8081:8081"
     command: jobmanager
     environment:
       JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
@@ -62,17 +62,7 @@ services:
       - flink-jobmanager
     command: taskmanager
     environment:
-      JOB_MANAGER_RPC_ADDRESS: flink-jobmanager # RPC address for TaskManagers to connect
-
-#  redis:
-#    image: redis:latest
-#    container_name: redis
-#    ports:
-#      - "6379:6379"
-#    volumes:
-#      - redis_data:/data
-#    restart: unless-stopped
-
+      JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
 
 volumes:
   cassandra_data:
