@@ -1,0 +1,79 @@
+services:
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.3
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.3
+    hostname: kafka
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+  cassandra:
+    image: cassandra:5.0.5
+    hostname: cassandra
+    container_name: cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: 'Cluster'
+      CASSANDRA_DC: 'datacenter1'
+      CASSANDRA_RACK: 'rack1'
+      CASSANDRA_ENDPOINT_SNITCH: 'GossipingPropertyFileSnitch'
+      CASSANDRA_SEEDS: "cassandra"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+
+  flink-jobmanager:
+    image: flink:1.18.1-scala_2.12-java17
+    hostname: flink-jobmanager
+    container_name: flink-jobmanager
+    ports:
+      - "8081:8081" # Expose Flink Web UI port
+    command: jobmanager
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
+
+  flink-taskmanager:
+    image: flink:1.18.1-scala_2.12-java17
+    hostname: flink-taskmanager
+    container_name: flink-taskmanager
+    depends_on:
+      - flink-jobmanager
+    command: taskmanager
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: flink-jobmanager # RPC address for TaskManagers to connect
+
+#  redis:
+#    image: redis:latest
+#    container_name: redis
+#    ports:
+#      - "6379:6379"
+#    volumes:
+#      - redis_data:/data
+#    restart: unless-stopped
+
+
+volumes:
+  cassandra_data:
+  redis_data:
