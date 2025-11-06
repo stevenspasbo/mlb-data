@@ -1,6 +1,5 @@
 package com.spasbo.mlb.model;
 
-import java.io.Serializable;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,8 +7,11 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Position implements Serializable {
-  private String code;
+public class Team {
+  private int id;
   private String name;
-  private String abbreviation;
+  private String link;
 }
+
+//@JsonIgnoreProperties(ignoreUnknown = true)
+//record Team(LeagueRecord leagueRecord, TeamInfo team) { }

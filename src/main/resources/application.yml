@@ -17,4 +17,5 @@ spring:
 
 
 application:
+  sport-id: 17
   pitch-event-topic: "pitches"

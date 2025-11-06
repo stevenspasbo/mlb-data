@@ -1,6 +1,6 @@
 package com.spasbo.mlb.configuration;
 
-import com.spasbo.mlb.model.event.PitchEvent;
+import com.spasbo.mlb.model.event.pitch.PitchEvent;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -42,11 +43,13 @@ public class KafkaConfiguration {
 
   @Bean
   public ConsumerFactory<String, PitchEvent> consumerFactory() {
+    JsonDeserializer<PitchEvent> deserializer = new JsonDeserializer<>(PitchEvent.class);
+    deserializer.addTrustedPackages("*");
+
     return new DefaultKafkaConsumerFactory<>(Map.of(
         CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
-        ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,
-        ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class
-    ));
+        ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class
+    ), new StringDeserializer(), deserializer);
   }
 
   @Bean
@@ -57,6 +60,14 @@ public class KafkaConfiguration {
         ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
         ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class
     ));
+  }
+
+  @Bean
+  public ConcurrentKafkaListenerContainerFactory<String, PitchEvent> pitchEventListenerContainerFactory() {
+    ConcurrentKafkaListenerContainerFactory<String, PitchEvent> factory =
+        new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(consumerFactory());
+    return factory;
   }
 
   @Bean
