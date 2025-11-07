@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class DailyGameIngestionService {
+public class GameIngestionService {
 
   private final GameByDateRepository gameRepository;
   private final StatcastService statcastService;
@@ -49,10 +49,10 @@ public class DailyGameIngestionService {
     entity.setVenueId(dto.venue().id());
     entity.setVenueName(dto.venue().name());
 
-    entity.setHomeTeamId(dto.teams().home().getId());
-    entity.setHomeTeamName(dto.teams().home().getName());
-    entity.setAwayTeamId(dto.teams().away().getId());
-    entity.setAwayTeamName(dto.teams().away().getName());
+    entity.setHomeTeamId(dto.teams().home().team().getId());
+    entity.setHomeTeamName(dto.teams().home().team().getName());
+    entity.setAwayTeamId(dto.teams().away().team().getId());
+    entity.setAwayTeamName(dto.teams().away().team().getName());
 
     return entity;
   }

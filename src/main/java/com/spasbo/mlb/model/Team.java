@@ -12,6 +12,3 @@ public class Team {
   private String name;
   private String link;
 }
-
-//@JsonIgnoreProperties(ignoreUnknown = true)
-//record Team(LeagueRecord leagueRecord, TeamInfo team) { }

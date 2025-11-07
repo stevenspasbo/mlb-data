@@ -11,7 +11,6 @@ public record Game(
     Teams teams,
     Instant gameDate,
     LocalDate officialDate,
-    GameStatus
-    status,
+    GameStatus status,
     Venue venue
 ) {}
