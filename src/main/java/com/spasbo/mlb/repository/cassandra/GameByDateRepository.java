@@ -1,4 +1,4 @@
-package com.spasbo.mlb.repository;
+package com.spasbo.mlb.repository.cassandra;
 
 import com.spasbo.mlb.entity.cassandra.GameByDate;
 import com.spasbo.mlb.entity.cassandra.GameKey;

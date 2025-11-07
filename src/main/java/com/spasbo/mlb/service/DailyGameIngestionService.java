@@ -3,16 +3,12 @@ package com.spasbo.mlb.service;
 import com.spasbo.mlb.entity.cassandra.GameByDate;
 import com.spasbo.mlb.entity.cassandra.GameKey;
 import com.spasbo.mlb.model.Game;
-import com.spasbo.mlb.model.ScheduleResponse;
-import com.spasbo.mlb.repository.GameByDateRepository;
-import java.net.URI;
+import com.spasbo.mlb.repository.cassandra.GameByDateRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 @Service
 @RequiredArgsConstructor

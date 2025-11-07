@@ -10,9 +10,11 @@ import org.springframework.data.cassandra.core.cql.keyspace.CreateKeyspaceSpecif
 import org.springframework.data.cassandra.core.cql.keyspace.DataCenterReplication;
 import org.springframework.data.cassandra.core.cql.keyspace.KeyspaceOption;
 import org.springframework.data.cassandra.core.cql.keyspace.SpecificationBuilder;
+import org.springframework.data.cassandra.repository.config.EnableCassandraRepositories;
 
 @Getter
 @Configuration
+@EnableCassandraRepositories(basePackages = "com.spasbo.mlb.repository.cassandra")
 public class CassandraConfiguration extends AbstractCassandraConfiguration {
 
   @Value(value = "${spring.cassandra.port}")
