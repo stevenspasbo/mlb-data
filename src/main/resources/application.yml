@@ -19,3 +19,5 @@ spring:
 application:
   sport-id: 17
   pitch-event-topic: "pitches"
+  cron:
+    fetch-daily-games: "0 0 * * *"
