@@ -36,7 +36,6 @@ public class CassandraConfiguration extends AbstractCassandraConfiguration {
   protected List<CreateKeyspaceSpecification> getKeyspaceCreations() {
     CreateKeyspaceSpecification specification = SpecificationBuilder.createKeyspace(keyspaceName)
         .with(KeyspaceOption.DURABLE_WRITES, true)
-        .withSimpleReplication()
         .withNetworkReplication(DataCenterReplication.of(localDataCenter, 1))
         .ifNotExists();
 
