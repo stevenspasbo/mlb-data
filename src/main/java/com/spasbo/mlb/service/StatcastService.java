@@ -46,7 +46,8 @@ public class StatcastService {
    * Gets the list of games happening on the current day.
    */
   public List<Game> getTodaysGames() {
-    URI scheduleUri = BASE_URI.resolve("/api/v1/schedule?sportId=%s".formatted(sportId));
+    URI scheduleUri = BASE_URI.resolve("/api/v1/schedule?sportId=%s&date=%s"
+        .formatted(sportId, LocalDate.now()));
     ResponseEntity<ScheduleResponse> response = restTemplate
         .getForEntity(scheduleUri, ScheduleResponse.class);
 
