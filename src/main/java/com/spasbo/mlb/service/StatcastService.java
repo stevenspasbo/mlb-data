@@ -9,13 +9,16 @@ import java.net.http.WebSocket;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -31,15 +34,22 @@ public class StatcastService {
 
   private final RestTemplate restTemplate;
   private final HttpClient httpClient;
-  private final Map<Integer, List<SseEmitter>> gameEmitters;
+  private final Map<Integer, ConcurrentLinkedQueue<SseEmitter>> gameEmitters;
+  private final int sportId;
+  private final Executor asyncExecutor;
+  private final Map<Integer, WebSocket> gameSockets = new ConcurrentHashMap<>();
 
-  @Value("${application.sport-id}")
-  private Integer sportId;
-
-  public StatcastService(RestTemplate restTemplate, HttpClient httpClient) {
+  public StatcastService(
+      RestTemplate restTemplate,
+      HttpClient httpClient,
+      @Value("${application.sport-id}") int sportId,
+      @Qualifier("taskExecutor") Executor asyncExecutor
+  ) {
     this.restTemplate = restTemplate;
     this.httpClient = httpClient;
     this.gameEmitters = new ConcurrentHashMap<>();
+    this.sportId = sportId;
+    this.asyncExecutor = asyncExecutor;
   }
 
   /**
@@ -48,6 +58,7 @@ public class StatcastService {
   public List<Game> getTodaysGames() {
     URI scheduleUri = BASE_URI.resolve("/api/v1/schedule?sportId=%s&date=%s"
         .formatted(sportId, LocalDate.now()));
+
     ResponseEntity<ScheduleResponse> response = restTemplate
         .getForEntity(scheduleUri, ScheduleResponse.class);
 
@@ -68,17 +79,26 @@ public class StatcastService {
    * Registers an SSE emitter with the Statcast service.
    */
   public SseEmitter registerEmitter(int gameId, SseEmitter emitter) {
-    List<SseEmitter> emitters = this.gameEmitters.computeIfAbsent(gameId, k -> {
-      List<SseEmitter> list = new CopyOnWriteArrayList<>();
-      connectToGame(gameId, (data) -> broadcast(gameId, data));
-      return list;
+    Queue<SseEmitter> emitters = this.gameEmitters.computeIfAbsent(gameId, k -> {
+      ConcurrentLinkedQueue<SseEmitter> queue = new ConcurrentLinkedQueue<>();
+
+      connectToGame(gameId, (data) -> broadcast(gameId, data))
+          .thenAccept(socket -> gameSockets.put(gameId, socket));
+
+      return queue;
     });
 
     emitters.add(emitter);
 
     Runnable cleanup = () -> {
       emitters.remove(emitter);
+      if (emitters.isEmpty()) {
+        if (gameEmitters.remove(gameId, emitters)) {
+          closeWebSocketForGame(gameId);
+        }
+      }
     };
+
     emitter.onCompletion(cleanup);
     emitter.onTimeout(cleanup);
     emitter.onError(e -> {
@@ -90,7 +110,7 @@ public class StatcastService {
   }
 
   private void broadcast(int gameId, String data) {
-    List<SseEmitter> emitters = this.gameEmitters.get(gameId);
+    Queue<SseEmitter> emitters = this.gameEmitters.get(gameId);
     if (emitters == null) {
       return;
     }
@@ -100,11 +120,15 @@ public class StatcastService {
         .data(data);
 
     for (SseEmitter emitter : emitters) {
-      try {
-        emitter.send(event);
-      } catch (IOException e) {
-        emitter.completeWithError(e);
-      }
+      CompletableFuture.runAsync(() -> sendDataToEmitter(emitter, event, gameId), asyncExecutor);
+    }
+  }
+
+  private void sendDataToEmitter(SseEmitter sseEmitter, SseEmitter.SseEventBuilder event, int gameId) {
+    try {
+      sseEmitter.send(event);
+    } catch (IOException e) {
+      sseEmitter.completeWithError(e);
     }
   }
 
@@ -119,6 +143,13 @@ public class StatcastService {
     return BASE_WEBSOCKET_URI.resolve("/api/v1/game/push/subscribe/gameday/%s".formatted(gameId));
   }
 
+  private void closeWebSocketForGame(int gameId) {
+    WebSocket socket = gameSockets.remove(gameId);
+    if (socket != null) {
+      socket.sendClose(WebSocket.NORMAL_CLOSURE, "No more subscribers");
+    }
+  }
+
   @RequiredArgsConstructor
   private class CallbackWebSocketListener implements WebSocket.Listener {
 
@@ -128,13 +159,14 @@ public class StatcastService {
     @Override
     public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
       callback.accept(data.toString());
-      return WebSocket.Listener.super.onText(webSocket, data, last);
+      webSocket.request(1);
+      return CompletableFuture.completedFuture(null);
     }
 
     @Override
     public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
       log.info("WebSocket for game {} closed: {} ({})", gameId, reason, statusCode);
-      List<SseEmitter> emitters = gameEmitters.get(gameId);
+      Queue<SseEmitter> emitters = gameEmitters.get(gameId);
       if (emitters != null) {
         SseEmitter.SseEventBuilder event = SseEmitter.event()
             .name("game_over")
@@ -151,7 +183,7 @@ public class StatcastService {
       }
 
       gameEmitters.remove(gameId);
-      return CompletableFuture.completedFuture(null);
+      return WebSocket.Listener.super.onClose(webSocket, statusCode, reason);
     }
 
     @Override
